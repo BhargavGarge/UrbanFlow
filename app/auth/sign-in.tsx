@@ -1,16 +1,47 @@
-import { View, Text, ScrollView, Image, TouchableOpacity } from "react-native";
-import React, { useState } from "react";
+import {
+  View,
+  Text,
+  ScrollView,
+  Image,
+  TouchableOpacity,
+  Alert,
+} from "react-native";
+import React, { useState, useCallback } from "react";
 import { icons, images } from "./../../constants/index";
 import InputField from "components/InputField";
-import { Link } from "expo-router";
+import { Link, router } from "expo-router";
 import OAuth from "components/OAuth"; // Ensure OAuth is a valid React component
+import { useSignIn } from "@clerk/clerk-expo";
+import CustomButton from "components/CustomButton";
 
 export default function SignIn() {
+  const { signIn, setActive, isLoaded } = useSignIn();
   const [form, setForm] = useState({
     email: "",
     password: "",
   });
-  const onSignInPress = async () => {};
+  const onSignInPress = useCallback(async () => {
+    if (!isLoaded) return;
+
+    try {
+      const signInAttempt = await signIn.create({
+        identifier: form.email,
+        password: form.password,
+      });
+
+      if (signInAttempt.status === "complete") {
+        await setActive({ session: signInAttempt.createdSessionId });
+        router.replace("/(root)/(tabs)/home");
+      } else {
+        // See https://clerk.com/docs/custom-flows/error-handling for more info on error handling
+        console.log(JSON.stringify(signInAttempt, null, 2));
+        Alert.alert("Error", "Log in failed. Please try again.");
+      }
+    } catch (err: any) {
+      console.log(JSON.stringify(err, null, 2));
+      Alert.alert("Error", err.errors[0].longMessage);
+    }
+  }, [isLoaded, form]);
   return (
     <ScrollView className="flex-1 bg-white">
       <View className="flex-1 bg-white">
@@ -18,27 +49,28 @@ export default function SignIn() {
           className="relative w-full h-[250px]
         "
         >
-          {/* <Image
-            source={images.signUpCar}
-            style={{ zIndex: 0, width: "100%", height: 250 }}
-          /> */}
-
           <View
             style={{
               marginTop: 25,
             }}
           >
-            <Text
-              className=" text-black font-JakartaSemiBold mt-10 text-center "
+            <View
               style={{
-                fontSize: 30,
+                marginTop: 25,
               }}
             >
-              Welcome back!
-            </Text>
-            <Text className="text-2xl text-black font-JakartaLight text-center ">
-              Your next ride awaits.
-            </Text>
+              <Text
+                className=" text-black font-JakartaSemiBold mt-10 text-center "
+                style={{
+                  fontSize: 30,
+                }}
+              >
+                Welcome back!
+              </Text>
+              <Text className="text-2xl text-black font-JakartaLight text-center ">
+                Your next ride awaits.
+              </Text>
+            </View>
           </View>
         </View>
         <View className="p-5">
@@ -59,12 +91,11 @@ export default function SignIn() {
               setForm({ ...form, password: value })
             }
           />
-          <TouchableOpacity
-            className="w-11/4 mt-10  mb-2 p-3 flex flex-row justify-center items-center rounded-full bg-[#9A63F2] "
+          <CustomButton
+            title="Sign In"
             onPress={onSignInPress}
-          >
-            <Text className={`text-lg font-bold text-white`}>Sign In</Text>
-          </TouchableOpacity>
+            className="mt-6"
+          />
           {/* OAuth */}
           <OAuth />
           <Link

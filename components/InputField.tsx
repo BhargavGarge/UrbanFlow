@@ -13,6 +13,7 @@ import { InputFieldProps } from "../types/type";
 
 const InputField = ({
   label,
+  placeholder,
   icon,
   secureTextEntry = false,
   labelStyle,
@@ -40,6 +41,7 @@ const InputField = ({
             <TextInput
               className={`rounded-full p-4 font-JakartaSemiBold text-[15px] flex-1 ${inputStyle} text-left`}
               secureTextEntry={secureTextEntry}
+              placeholder={placeholder}
               {...props}
             />
           </View>
