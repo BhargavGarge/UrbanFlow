@@ -1,8 +1,9 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { useUser } from "@clerk/clerk-expo";
 import { useAuth } from "@clerk/clerk-expo";
 import RideCard from "components/RideCard";
 import { images, icons } from "../../../constants";
+import * as Location from "expo-location";
 import {
   FlatList,
   Text,
@@ -15,6 +16,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import GoogleTextInput from "components/GoogleTextInput";
 import Maps from "components/Maps";
+import useLocationStore from "store";
 
 const recentRides = [
   // Your recent rides data...
@@ -125,9 +127,14 @@ const recentRides = [
 ];
 
 export default function Home() {
+  // ALL VARIBALES AND STATE DECLERATIONS
+  const { setUserLocation, setDestinationLocation } = useLocationStore();
+  const [hasPermission, setHasPermission] = useState<boolean>(false);
   const { signOut } = useAuth();
   const { user } = useUser();
-  const loading = false; // Simulating a loading state
+  const loading = true;
+
+  //ALL THE FUNCTIONS
   const handleSignOut = () => {
     signOut();
     router.replace("/auth/sign-in");
@@ -135,6 +142,32 @@ export default function Home() {
   const handleDestinationPress = () => {
     console.log("hello");
   };
+
+  useEffect(() => {
+    const requestLocation = async () => {
+      let { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== "granted") {
+        setHasPermission(false);
+        return;
+      }
+
+      let location = await Location.getCurrentPositionAsync({});
+
+      const address = await Location.reverseGeocodeAsync({
+        latitude: location.coords?.latitude!,
+        longitude: location.coords?.longitude!,
+      });
+      setUserLocation({
+        // latitude: location.coords?.latitude,
+        // longitude: location.coords?.longitude,
+        latitude: 21.110961203125,
+        longitude: 79.09104982812501,
+        address: `${address[0].name}, ${address[0].region}`,
+      });
+    };
+    requestLocation();
+  }, []);
+
   return (
     <SafeAreaView className="bg-general-500 flex-1">
       <FlatList
@@ -164,8 +197,7 @@ export default function Home() {
 
             <GoogleTextInput
               icon={icons.search}
-              // textInputBackgroundColor="#f0f0f0"
-              // containerStyle="bg-white shadow-md shadow-neutral-300"
+              containerStyle="bg-white shadow-md shadow-neutral-300"
               handlePress={handleDestinationPress}
             />
 

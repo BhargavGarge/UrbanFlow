@@ -5,6 +5,7 @@ import { useEffect } from "react";
 import "./global.css";
 import { ClerkProvider, ClerkLoaded } from "@clerk/clerk-expo";
 import { tokenCache } from "../lib/cache";
+import "react-native-get-random-values";
 const publishableKey =
   "pk_test_Y29ycmVjdC1zdGluZ3JheS0zNS5jbGVyay5hY2NvdW50cy5kZXYk";
 

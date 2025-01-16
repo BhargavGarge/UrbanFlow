@@ -11,6 +11,8 @@ declare interface Driver {
 }
 
 declare interface MarkerData {
+  id: number; // Represents `driver_id` in the backend
+  driver_id?: number;
   latitude: number;
   longitude: number;
   id: number;
