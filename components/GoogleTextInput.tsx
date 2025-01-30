@@ -1,10 +1,9 @@
+import { icons } from "../constants";
 import React from "react";
-import { View, Image } from "react-native";
-
-import { GoogleInputProps } from "types/type";
+import { Image, View } from "react-native";
 import { GooglePlacesAutocomplete } from "react-native-google-places-autocomplete";
-import { icons } from "../constants/index";
-const googlePlaceKey = "AIzaSyBpjyeVfIasBlWysKRUTyj1zMZd8ELT-b8";
+import { GoogleInputProps } from "types/type";
+
 const GoogleTextInput = ({
   icon,
   initialLocation,
@@ -16,11 +15,10 @@ const GoogleTextInput = ({
     <View
       className={`flex flex-row items-center justify-center relative z-50 rounded-xl ${containerStyle}`}
     >
-      <View className="justify-center items-center w-6 h-6"></View>
       <GooglePlacesAutocomplete
-        placeholder="Where you want to go?"
-        debounce={200}
         fetchDetails={true}
+        placeholder="Search"
+        debounce={200}
         styles={{
           textInputContainer: {
             alignItems: "center",
@@ -39,7 +37,6 @@ const GoogleTextInput = ({
             marginTop: 5,
             width: "100%",
             borderRadius: 200,
-            // Add placeholder text color here
           },
           listView: {
             backgroundColor: textInputBackgroundColor
@@ -53,20 +50,16 @@ const GoogleTextInput = ({
             zIndex: 99,
           },
         }}
-        textInputProps={{
-          placeholderTextColor: "#9A9A9A",
-          placeholder: initialLocation ?? "Where do you want to go?", // Properly apply placeholder text color here
-        }}
-        query={{
-          key: googlePlaceKey,
-          language: "en",
-        }}
         onPress={(data, details = null) => {
           handlePress({
             latitude: details?.geometry.location.lat!,
             longitude: details?.geometry.location.lng!,
             address: data.description,
           });
+        }}
+        query={{
+          key: "",
+          language: "en",
         }}
         renderLeftButton={() => (
           <View className="justify-center items-center w-6 h-6">
@@ -77,6 +70,10 @@ const GoogleTextInput = ({
             />
           </View>
         )}
+        textInputProps={{
+          placeholderTextColor: "gray",
+          placeholder: initialLocation ?? "Where do you want to go?",
+        }}
       />
     </View>
   );

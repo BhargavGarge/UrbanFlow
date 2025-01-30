@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import MapView, { Marker, PROVIDER_DEFAULT } from "react-native-maps";
-import useLocationStore, { useDriverStore } from "store";
+import { useDriverStore, useLocationStore } from "store";
 import {
   calculateDriverTimes,
   calculateRegion,
@@ -78,8 +78,7 @@ export default function Maps() {
 
   // Generate markers whenever drivers, userLatitude, or userLongitude changes
   useEffect(() => {
-    console.log("User Location:", { userLatitude, userLongitude });
-
+    setDrivers(drivers);
     if (userLatitude && userLongitude && Array.isArray(drivers)) {
       const newMarkers = generateMarkersFromData({
         data: drivers,
@@ -89,11 +88,6 @@ export default function Maps() {
       setMarkers(newMarkers);
     }
   }, [drivers, userLatitude, userLongitude]);
-
-  // Debug markers
-  useEffect(() => {
-    console.log("Markers updated:", markers);
-  }, [markers]);
 
   return (
     <MapView

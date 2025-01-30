@@ -13,10 +13,11 @@ import {
   TouchableOpacity,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { router } from "expo-router";
+import { useRouter } from "expo-router";
 import GoogleTextInput from "components/GoogleTextInput";
 import Maps from "components/Maps";
-import useLocationStore from "store";
+import { useLocationStore } from "store";
+import { GooglePlacesAutocomplete } from "react-native-google-places-autocomplete";
 
 const recentRides = [
   // Your recent rides data...
@@ -35,7 +36,7 @@ const recentRides = [
     user_id: "1",
     created_at: "2024-08-12 05:19:20.620007",
     driver: {
-      driver_id: "2",
+      driver_id: 2,
       first_name: "David",
       last_name: "Brown",
       profile_image_url:
@@ -61,7 +62,7 @@ const recentRides = [
     user_id: "1",
     created_at: "2024-08-12 06:12:17.683046",
     driver: {
-      driver_id: "1",
+      driver_id: 1,
       first_name: "James",
       last_name: "Wilson",
       profile_image_url:
@@ -87,7 +88,7 @@ const recentRides = [
     user_id: "1",
     created_at: "2024-08-12 08:49:01.809053",
     driver: {
-      driver_id: "1",
+      driver_id: 1,
       first_name: "James",
       last_name: "Wilson",
       profile_image_url:
@@ -113,7 +114,7 @@ const recentRides = [
     user_id: "1",
     created_at: "2024-08-12 18:43:54.297838",
     driver: {
-      driver_id: "3",
+      driver_id: 3,
       first_name: "Michael",
       last_name: "Johnson",
       profile_image_url:
@@ -126,25 +127,21 @@ const recentRides = [
   },
 ];
 
-export default function Home() {
-  // ALL VARIBALES AND STATE DECLERATIONS
-  const { setUserLocation, setDestinationLocation } = useLocationStore();
-  const [hasPermission, setHasPermission] = useState<boolean>(false);
-  const { signOut } = useAuth();
+const Home = () => {
   const { user } = useUser();
+  const { signOut } = useAuth();
+  const router = useRouter();
+  const { setUserLocation, setDestinationLocation } = useLocationStore();
   const loading = true;
-
-  //ALL THE FUNCTIONS
   const handleSignOut = () => {
     signOut();
     router.replace("/auth/sign-in");
   };
-  const handleDestinationPress = () => {
-    console.log("hello");
-  };
+
+  const [hasPermission, setHasPermission] = useState<boolean>(false);
 
   useEffect(() => {
-    const requestLocation = async () => {
+    (async () => {
       let { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== "granted") {
         setHasPermission(false);
@@ -157,35 +154,58 @@ export default function Home() {
         latitude: location.coords?.latitude!,
         longitude: location.coords?.longitude!,
       });
+
       setUserLocation({
-        // latitude: location.coords?.latitude,
-        // longitude: location.coords?.longitude,
-        latitude: 21.110961203125,
-        longitude: 79.09104982812501,
+        latitude: location.coords?.latitude,
+        longitude: location.coords?.longitude,
         address: `${address[0].name}, ${address[0].region}`,
       });
-    };
-    requestLocation();
+    })();
   }, []);
 
+  const handleDestinationPress = (location: {
+    latitude: number;
+    longitude: number;
+    address: string;
+  }) => {
+    setDestinationLocation(location);
+
+    router.push("/(root)/find-ride");
+  };
+
   return (
-    <SafeAreaView className="bg-general-500 flex-1">
+    <SafeAreaView className="bg-general-500">
       <FlatList
-        data={recentRides.slice(0, 5)} // Adjust the number of rides as needed
-        keyExtractor={(item) => item.ride_id} // Unique key for each ride
+        data={recentRides?.slice(0, 5)}
         renderItem={({ item }) => <RideCard ride={item} />}
+        keyExtractor={(item, index) => index.toString()}
+        className="px-5"
+        keyboardShouldPersistTaps="handled"
         contentContainerStyle={{
           paddingBottom: 100,
-          flexGrow: 1, // Ensures proper alignment for "No Rides Found"
         }}
+        ListEmptyComponent={() => (
+          <View className="flex flex-col items-center justify-center">
+            {!loading ? (
+              <>
+                <Image
+                  source={images.noResult}
+                  className="w-40 h-40"
+                  alt="No recent rides found"
+                  resizeMode="contain"
+                />
+                <Text className="text-sm">No recent rides found</Text>
+              </>
+            ) : (
+              <ActivityIndicator size="small" color="#000" />
+            )}
+          </View>
+        )}
         ListHeaderComponent={
           <>
             <View className="flex flex-row items-center justify-between my-5">
               <Text className="text-2xl font-JakartaExtraBold">
-                Welcome{" "}
-                {user?.firstName ||
-                  user?.emailAddresses?.[0]?.emailAddress?.split("@")[0]}
-                👋
+                Welcome {user?.firstName}👋
               </Text>
               <TouchableOpacity
                 onPress={handleSignOut}
@@ -215,26 +235,9 @@ export default function Home() {
             </Text>
           </>
         }
-        ListEmptyComponent={() => (
-          <View className="flex-1 items-center justify-center">
-            {!loading ? (
-              <>
-                <Image
-                  source={images.noResult}
-                  className="w-40 h-40"
-                  alt="No recent rides found"
-                  resizeMode="contain"
-                />
-                <Text className="text-sm text-gray-600">
-                  No recent rides found
-                </Text>
-              </>
-            ) : (
-              <ActivityIndicator size="small" color="#000" />
-            )}
-          </View>
-        )}
       />
     </SafeAreaView>
   );
-}
+};
+
+export default Home;
