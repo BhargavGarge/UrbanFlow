@@ -10,11 +10,16 @@ export const sortRides = (rides: Ride[]): Ride[] => {
   return result.reverse();
 };
 
-export function formatTime(minutes: number): string {
-  const formattedMinutes = +minutes?.toFixed(0) || 0;
+export function formatTime(minutes: number | undefined | null): string {
+  // Handle undefined or null values
+  if (minutes === undefined || minutes === null) {
+    return "0 min"; // Default value for undefined/null
+  }
+
+  const formattedMinutes = +minutes.toFixed(0) || 0;
 
   if (formattedMinutes < 60) {
-    return `${minutes} min`;
+    return `${formattedMinutes} min`;
   } else {
     const hours = Math.floor(formattedMinutes / 60);
     const remainingMinutes = formattedMinutes % 60;

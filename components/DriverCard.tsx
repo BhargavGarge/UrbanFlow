@@ -6,6 +6,8 @@ import { formatTime } from "../lib/utils";
 import { DriverCardProps } from "../types/type";
 
 const DriverCard = ({ item, selected, setSelected }: DriverCardProps) => {
+  // console.log("DriverCard item:", item);
+
   return (
     <TouchableOpacity
       onPress={setSelected}
@@ -21,7 +23,9 @@ const DriverCard = ({ item, selected, setSelected }: DriverCardProps) => {
 
       <View style={styles.infoContainer}>
         <View style={styles.titleContainer}>
-          <Text style={styles.title}>{item.title}</Text>
+          <Text style={styles.title}>
+            {item.first_name} {item.last_name}
+          </Text>
           <View style={styles.ratingContainer}>
             <Image source={icons.star} style={styles.ratingIcon} />
             <Text style={styles.ratingText}>4</Text>
@@ -35,7 +39,10 @@ const DriverCard = ({ item, selected, setSelected }: DriverCardProps) => {
           </View>
 
           <Text style={styles.separator}>|</Text>
-          <Text style={styles.detailsText}>{formatTime(item.time!)}</Text>
+          <Text style={styles.detailsText}>
+            {formatTime(item.time ?? 0)}
+            {/* Use nullish coalescing to provide a default value */}
+          </Text>
 
           <Text style={styles.separator}>|</Text>
           <Text style={styles.detailsText}>{item.car_seats} seats</Text>
@@ -61,7 +68,9 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   selectedCard: {
-    backgroundColor: "white", // Example selected color
+    backgroundColor: "white",
+    borderWidth: 1,
+    borderColor: "black", // Example selected color
   },
   unselectedCard: {
     backgroundColor: "white",

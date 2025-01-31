@@ -18,7 +18,13 @@ const ConfirmRide = () => {
           <DriverCard
             item={item}
             selected={selectedDriver!}
-            setSelected={() => setSelectedDriver(item.id!)}
+            setSelected={() => {
+              if (!isNaN(Number(item.id))) {
+                setSelectedDriver(Number(item.id));
+              } else {
+                console.error("Invalid driver ID:", item.id);
+              }
+            }}
           />
         )}
         ListFooterComponent={() => (

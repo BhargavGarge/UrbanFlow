@@ -55,6 +55,12 @@ export const useDriverStore = create<DriverStore>((set) => ({
   selectedDriver: null,
   setSelectedDriver: (driverId: number) =>
     set(() => ({ selectedDriver: driverId })),
-  setDrivers: (drivers: MarkerData[]) => set(() => ({ drivers })),
+  setDrivers: (drivers: MarkerData[]) =>
+    set(() => ({
+      drivers: drivers.map((driver) => ({
+        ...driver,
+        time: driver.time ?? Math.floor(Math.random() * 10) + 5, // Add default time if missing
+      })),
+    })),
   clearSelectedDriver: () => set(() => ({ selectedDriver: null })),
 }));
