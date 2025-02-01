@@ -1,6 +1,6 @@
 import { Driver, MarkerData } from "../types/type";
 
-const directionsAPI = process.env.EXPO_PUBLIC_DIRECTIONS_API_KEY;
+const directionsAPI = "AIzaSyCuBuAyLHdqCJmxic6imaPfGIPpG3fs7I4";
 
 export const generateMarkersFromData = ({
   data,
@@ -18,7 +18,6 @@ export const generateMarkersFromData = ({
     return {
       latitude: userLatitude + latOffset,
       longitude: userLongitude + lngOffset,
-      id: driver.driver_id,
       title: `${driver.first_name} ${driver.last_name}`,
       ...driver,
     };
@@ -38,8 +37,8 @@ export const calculateRegion = ({
 }) => {
   if (!userLatitude || !userLongitude) {
     return {
-      latitude: 21.110961203125,
-      longitude: 79.09104982812501,
+      latitude: 37.78825,
+      longitude: -122.4324,
       latitudeDelta: 0.01,
       longitudeDelta: 0.01,
     };

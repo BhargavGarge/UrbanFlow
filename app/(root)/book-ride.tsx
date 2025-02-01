@@ -22,7 +22,7 @@ const BookRide = () => {
 
   return (
     <StripeProvider
-      publishableKey=""
+      publishableKey="pk_test_51QnKCySFbBQp9Ay5jRhgP22Z0OWeyjvraGLrXvaOsKp42ArRGaKHEaQKEfcYX7BrFevEDnMFGwRa9JSsJ746DS2C00YEXqEOR0"
       merchantIdentifier="merchant.uber.com" // required for Apple Pay
       urlScheme="myapp" // required for 3D Secure and bank redirects
     >
@@ -88,7 +88,7 @@ const BookRide = () => {
             fullName={user?.fullName!}
             email={user?.emailAddresses[0].emailAddress!}
             amount={driverDetails?.price!}
-            driverId={driverDetails?.id}
+            driverId={driverDetails?.id ?? 0}
             rideTime={driverDetails?.time!}
           />
         </>

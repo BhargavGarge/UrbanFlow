@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from "react";
+import MapViewDirections from "react-native-maps-directions";
+
 import MapView, { Marker, PROVIDER_DEFAULT } from "react-native-maps";
 import { useDriverStore, useLocationStore } from "store";
 import {
@@ -12,6 +14,7 @@ import { useFetch } from "lib/fetch";
 import { ActivityIndicator, View, Text } from "react-native";
 
 export default function Maps() {
+  const directionAPI = "AIzaSyCuBuAyLHdqCJmxic6imaPfGIPpG3fs7I4";
   const {
     userLongitude,
     userLatitude,
@@ -80,7 +83,7 @@ export default function Maps() {
       key={markers.length} // Force re-render of the map when markers update
       className="w-full h-full rounded-2xl"
       tintColor="black"
-      // mapType="mutedStandard"
+      mapType="mutedStandard"
       showsPointsOfInterest={false}
       initialRegion={region}
       showsUserLocation={true}
@@ -105,6 +108,32 @@ export default function Maps() {
           }
         />
       ))}
+      {destinationLatitude && destinationLongitude && (
+        <>
+          <Marker
+            key="destination"
+            coordinate={{
+              latitude: destinationLatitude,
+              longitude: destinationLongitude,
+            }}
+            title="Destination"
+            image={icons.pin}
+          />
+          <MapViewDirections
+            origin={{
+              latitude: userLatitude!,
+              longitude: userLongitude!,
+            }}
+            destination={{
+              latitude: destinationLatitude,
+              longitude: destinationLongitude,
+            }}
+            apikey={directionAPI}
+            strokeColor="#b302ff"
+            strokeWidth={4}
+          />
+        </>
+      )}
     </MapView>
   );
 }

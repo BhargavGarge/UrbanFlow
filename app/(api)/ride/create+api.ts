@@ -36,7 +36,9 @@ export async function POST(request: Request) {
       );
     }
 
-    const sql = neon(`${process.env.DATABASE_URL}`);
+    const sql = neon(
+      "postgresql://flowdb_owner:1mxfwQhPl0MG@ep-still-glade-a2a1sxjx.eu-central-1.aws.neon.tech/flowdb?sslmode=require"
+    );
 
     const response = await sql`
       INSERT INTO rides ( 
