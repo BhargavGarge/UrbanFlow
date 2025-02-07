@@ -1,53 +1,67 @@
 import { Stripe } from "stripe";
 
-const stripe = new Stripe("");
+const stripe = new Stripe(
+  "sk_test_51QnKCySFbBQp9Ay50A9ZbtnqEtZ69vOrB5JZiUzBndxtG8CsGAtonQB55DvETXmzsd2Rcr5kOion5ZiXyKi5KQjN00F7HMAYTK"
+);
 
 export async function POST(request: Request) {
-  const body = await request.json();
-  const { name, email, amount } = body;
+  try {
+    const body = await request.json();
+    const { name, email, amount } = body;
 
-  if (!name || !email || !amount) {
-    return new Response(JSON.stringify({ error: "Missing required fields" }), {
-      status: 400,
-    });
-  }
+    if (!name || !email || !amount) {
+      return new Response(
+        JSON.stringify({ error: "Missing required fields" }),
+        { status: 400 }
+      );
+    }
 
-  let customer;
-  const doesCustomerExist = await stripe.customers.list({
-    email,
-  });
+    let customer;
+    const existingCustomer = await stripe.customers.list({ email });
 
-  if (doesCustomerExist.data.length > 0) {
-    customer = doesCustomerExist.data[0];
-  } else {
-    const newCustomer = await stripe.customers.create({
-      name,
-      email,
-    });
+    if (existingCustomer.data.length > 0) {
+      customer = existingCustomer.data[0];
+    } else {
+      customer = await stripe.customers.create({ name, email });
+    }
 
-    customer = newCustomer;
-  }
+    const ephemeralKey = await stripe.ephemeralKeys.create(
+      { customer: customer.id },
+      { apiVersion: "2023-10-16" } // ✅ Use a valid past version
+    );
 
-  const ephemeralKey = await stripe.ephemeralKeys.create(
-    { customer: customer.id },
-    { apiVersion: "2024-06-20" }
-  );
-
-  const paymentIntent = await stripe.paymentIntents.create({
-    amount: parseInt(amount) * 100,
-    currency: "usd",
-    customer: customer.id,
-    automatic_payment_methods: {
-      enabled: true,
-      allow_redirects: "never",
-    },
-  });
-
-  return new Response(
-    JSON.stringify({
-      paymentIntent: paymentIntent,
-      ephemeralKey: ephemeralKey,
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: parseInt(amount) * 100, // ✅ Convert to cents
+      currency: "usd",
       customer: customer.id,
-    })
-  );
+    });
+
+    console.log("🛠 Stripe Payment Intent Response:", paymentIntent); // ✅ Debugging
+
+    if (!paymentIntent.client_secret) {
+      console.error("🚨 Stripe Error: Missing client_secret in response");
+      return new Response(
+        JSON.stringify({ error: "Stripe did not return a client_secret" }),
+        { status: 500 }
+      );
+    }
+
+    return new Response(
+      JSON.stringify({
+        paymentIntent,
+        ephemeralKey,
+        customer: customer.id,
+      }),
+      { status: 200 }
+    );
+  } catch (error: any) {
+    console.error("❌ Error creating payment intent:", error.message);
+    return new Response(
+      JSON.stringify({
+        error: "Internal Server Error",
+        details: error.message,
+      }),
+      { status: 500 }
+    );
+  }
 }

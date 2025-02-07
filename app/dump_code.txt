@@ -1,0 +1,514 @@
+import { useAuth } from "@clerk/clerk-expo";
+import { useStripe } from "@stripe/stripe-react-native";
+import { router } from "expo-router";
+import React, { useState } from "react";
+import { Alert, Image, Text, View } from "react-native";
+import { ReactNativeModal } from "react-native-modal";
+import CustomButton from "components/CustomButton";
+import { images } from "../constants";
+import { fetchAPI } from "../lib/fetch";
+import { useLocationStore } from "store";
+import { PaymentProps } from "../types/type";
+
+const Payment = ({
+  fullName,
+  email,
+  amount,
+  driverId,
+  rideTime,
+}: PaymentProps) => {
+  const { initPaymentSheet, presentPaymentSheet } = useStripe();
+  const {
+    userAddress,
+    userLongitude,
+    userLatitude,
+    destinationLatitude,
+    destinationAddress,
+    destinationLongitude,
+  } = useLocationStore();
+
+  const { userId } = useAuth();
+  const [success, setSuccess] = useState<boolean>(false);
+  const [loading, setLoading] = useState<boolean>(false);
+
+  const handlePaymentError = (error: any) => {
+    console.error("❌ Payment Error Details:", JSON.stringify(error, null, 2));
+
+    setLoading(false);
+    Alert.alert(
+      "Payment Error",
+      `${error?.message || "An unknown error occurred"}\n\nError Code: ${error?.code || "UNKNOWN"}`
+    );
+  };
+
+  const openPaymentSheet = async () => {
+    try {
+      setLoading(true);
+      console.log("🚀 Starting payment process...");
+
+      // Step 1: Initialize payment sheet
+      const initResult = await initializePaymentSheet();
+      console.log("✅ Payment sheet initialized:", initResult);
+
+      if (initResult?.error) {
+        throw new Error(initResult.error.message);
+      }
+
+      // Step 2: Present payment sheet
+      console.log("🛒 Presenting payment sheet...");
+      const { error } = await presentPaymentSheet();
+
+      if (error) {
+        console.error("❌ Present payment sheet error:", error);
+        handlePaymentError(error);
+      } else {
+        console.log("🎉 Payment successful!");
+        setSuccess(true);
+      }
+    } catch (error) {
+      console.error("❌ Payment process error:", error);
+      handlePaymentError(error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const initializePaymentSheet = async () => {
+    try {
+      console.log("💰 Initializing payment sheet with amount:", amount);
+
+      return await initPaymentSheet({
+        merchantDisplayName: "Example, Inc.",
+        intentConfiguration: {
+          mode: {
+            amount: parseInt(amount) * 100, // Convert to cents
+            currencyCode: "usd",
+          },
+          paymentMethodTypes: ["card"],
+          confirmHandler: async (
+            paymentMethod,
+            shouldSavePaymentMethod,
+            intentCreationCallback
+          ) => {
+            try {
+              console.log("🚀 Starting payment process...");
+
+              console.log(
+                "💳 Confirm handler called with payment method: ",
+                paymentMethod.id
+              );
+
+              console.log("🔧 Creating payment intent...");
+              const { paymentIntent, customer } = await fetchAPI(
+                "/(api)/(stripe)/create",
+                {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                  },
+                  body: JSON.stringify({
+                    name: fullName || email.split("@")[0],
+                    email: email,
+                    amount: amount,
+                    paymentMethodId: paymentMethod.id,
+                  }),
+                }
+              );
+
+              if (!paymentIntent?.client_secret) {
+                throw new Error(
+                  "❌ No client secret received from payment intent creation"
+                );
+              }
+
+              console.log("✅ Payment intent created: ", paymentIntent.id);
+
+              console.log("🔄 Confirming payment intent...");
+              const { result } = await fetchAPI("/(api)/(stripe)/pay", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  payment_method_id: paymentMethod.id,
+                  payment_intent_id: paymentIntent.id,
+                  customer_id: customer,
+                  client_secret: paymentIntent.client_secret,
+                }),
+              });
+
+              // 🟡 Handle authentication requirement
+              if (result?.status === "requires_action" && result?.next_action) {
+                console.log("🛑 Authentication required! Redirecting user...");
+                await presentPaymentSheet(); // Show Stripe authentication UI
+                return;
+              }
+
+              if (!result?.client_secret) {
+                throw new Error(
+                  "❌ No client secret received from payment confirmation"
+                );
+              }
+
+              // ✅ Proceed with booking the ride
+              console.log("🚗 Creating ride record...");
+              await fetchAPI("/(api)/ride/create", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  origin_address: userAddress,
+                  destination_address: destinationAddress,
+                  origin_latitude: userLatitude,
+                  origin_longitude: userLongitude,
+                  destination_latitude: destinationLatitude,
+                  destination_longitude: destinationLongitude,
+                  ride_time: rideTime.toFixed(0),
+                  fare_price: parseInt(amount) * 100,
+                  payment_status: "paid",
+                  driver_id: driverId,
+                  user_id: userId,
+                }),
+              });
+
+              console.log("🎉 Payment successful! Booking confirmed.");
+              intentCreationCallback({
+                clientSecret: result.client_secret,
+              });
+            } catch (error) {
+              console.error("❌ Confirm handler error:", error);
+              throw error;
+            }
+          },
+        },
+        returnURL: "myapp://book-ride",
+      });
+    } catch (error) {
+      console.error("❌ Initialize payment sheet error:", error);
+      throw error;
+    }
+  };
+
+  return (
+    <>
+      <CustomButton
+        title={loading ? "Processing..." : "Confirm Ride"}
+        className="my-10"
+        onPress={openPaymentSheet}
+        disabled={loading}
+      />
+
+      <ReactNativeModal
+        isVisible={success}
+        onBackdropPress={() => setSuccess(false)}
+      >
+        <View className="flex flex-col items-center justify-center bg-white p-7 rounded-2xl">
+          <Image source={images.check} className="w-28 h-28 mt-5" />
+
+          <Text className="text-2xl text-center font-JakartaBold mt-5">
+            Booking placed successfully
+          </Text>
+
+          <Text className="text-md text-general-200 font-JakartaRegular text-center mt-3">
+            Thank you for your booking. Your reservation has been successfully
+            placed. Please proceed with your trip.
+          </Text>
+
+          <CustomButton
+            title="Back Home"
+            onPress={() => {
+              setSuccess(false);
+              router.push("/(root)/(tabs)/home");
+            }}
+            className="mt-5"
+          />
+        </View>
+      </ReactNativeModal>
+    </>
+  );
+};
+
+export default Payment;
+
+import { Stripe } from "stripe";
+
+const stripe = new Stripe(
+  "sk_test_51QnKCySFbBQp9Ay50A9ZbtnqEtZ69vOrB5JZiUzBndxtG8CsGAtonQB55DvETXmzsd2Rcr5kOion5ZiXyKi5KQjN00F7HMAYTK"
+);
+
+export async function POST(request: Request) {
+  try {
+    const body = await request.json();
+    const { payment_method_id, payment_intent_id, customer_id } = body;
+
+    if (!payment_method_id || !payment_intent_id || !customer_id) {
+      return new Response(
+        JSON.stringify({
+          error: "Missing required payment info",
+        })
+      );
+    }
+
+    const paymentMethod = await stripe.paymentMethods.attach(
+      payment_method_id,
+      {
+        customer: customer_id,
+      }
+    );
+
+    const result = await stripe.paymentIntents.confirm(payment_intent_id, {
+      payment_method: payment_method_id,
+    });
+    return new Response(
+      JSON.stringify({
+        result: result,
+        message: "Payment Confirmed",
+        success: true,
+      })
+    );
+  } catch (error: any) {
+    console.error("❌ Error processing payment:", error);
+
+    return new Response(
+      JSON.stringify({
+        error: "Internal Server Error",
+        details: error.message || "Unknown error",
+      }),
+      { status: 500 }
+    );
+  }
+}
+import { Stripe } from "stripe";
+
+const stripe = new Stripe(
+  "sk_test_51QnKCySFbBQp9Ay50A9ZbtnqEtZ69vOrB5JZiUzBndxtG8CsGAtonQB55DvETXmzsd2Rcr5kOion5ZiXyKi5KQjN00F7HMAYTK"
+);
+
+export async function POST(request: Request) {
+  const body = await request.json();
+  const { name, email, amount } = body;
+
+  if (!name || !email || !amount) {
+    return new Response(
+      JSON.stringify({
+        error: "Missing required fields",
+        status: 400,
+      })
+    );
+  }
+  let customer;
+  const existingCustomer = await stripe.customers.list({ email });
+  if (existingCustomer.data.length > 0) {
+    customer = existingCustomer.data[0];
+  } else {
+    const newCustomer = await stripe.customers.create({
+      name,
+      email,
+    });
+    customer = newCustomer;
+  }
+
+  const ephemeralKey = await stripe.ephemeralKeys.create(
+    { customer: customer.id },
+    { apiVersion: "2024-12-18.acacia" }
+  );
+  const paymentIntent = await stripe.paymentIntents.create({
+    amount: parseInt(amount) * 100,
+    currency: "usd",
+    customer: customer.id,
+    automatic_payment_methods: {
+      enabled: true,
+      allow_redirects: "never",
+    },
+  });
+  return new Response(
+    JSON.stringify({
+      paymentIntent: paymentIntent,
+      ephemeralKey: ephemeralKey,
+      customer: customer.id,
+    })
+  );
+}
+import React from "react";
+import { useUser } from "@clerk/clerk-expo";
+import { Image, Text, View, StyleSheet } from "react-native";
+
+import RideLayout from "components/RideLayout";
+import { icons } from "../../constants";
+import { formatTime } from "../../lib/utils";
+import { useDriverStore, useLocationStore } from "store";
+import Payment from "components/Payment";
+import { StripeProvider } from "@stripe/stripe-react-native";
+
+const BookRide = () => {
+  const { user } = useUser();
+  const { userAddress, destinationAddress } = useLocationStore();
+  const { drivers, selectedDriver } = useDriverStore();
+
+  console.log("selectedDriver", selectedDriver);
+
+  const driverDetails = drivers?.find(
+    (driver) => +driver.id === selectedDriver
+  );
+
+  return (
+    <StripeProvider
+      publishableKey="pk_test_51QnKCySFbBQp9Ay5jRhgP22Z0OWeyjvraGLrXvaOsKp42ArRGaKHEaQKEfcYX7BrFevEDnMFGwRa9JSsJ746DS2C00YEXqEOR0"
+      merchantIdentifier="merchant.uber.com" // required for Apple Pay
+      urlScheme="myapp" // required for 3D Secure and bank redirects
+    >
+      <RideLayout title="Book Ride">
+        <>
+          <Text style={styles.title}>Ride Information</Text>
+
+          <View style={styles.centeredContainer}>
+            <Image
+              source={{ uri: driverDetails?.profile_image_url }}
+              style={styles.profileImage}
+            />
+
+            <View style={styles.driverInfo}>
+              <Text style={styles.driverName}>
+                {driverDetails?.first_name} {driverDetails?.last_name}
+              </Text>
+
+              <View style={styles.ratingContainer}>
+                <Image
+                  source={icons.star}
+                  style={styles.starIcon}
+                  resizeMode="contain"
+                />
+                <Text style={styles.ratingText}>{driverDetails?.rating}</Text>
+              </View>
+            </View>
+          </View>
+
+          <View style={styles.infoBox}>
+            <View style={styles.infoRow}>
+              <Text style={styles.infoText}>Ride Price</Text>
+              <Text style={[styles.infoText, styles.priceText]}>
+                ${driverDetails?.price}
+              </Text>
+            </View>
+
+            <View style={styles.infoRow}>
+              <Text style={styles.infoText}>Pickup Time</Text>
+              <Text style={styles.infoText}>
+                {formatTime(driverDetails?.time!)}
+              </Text>
+            </View>
+
+            <View style={styles.infoRow}>
+              <Text style={styles.infoText}>Car Seats</Text>
+              <Text style={styles.infoText}>{driverDetails?.car_seats}</Text>
+            </View>
+          </View>
+
+          <View style={styles.addressContainer}>
+            <View style={styles.addressRow}>
+              <Image source={icons.to} style={styles.icon} />
+              <Text style={styles.addressText}>{userAddress}</Text>
+            </View>
+
+            <View style={styles.addressRow}>
+              <Image source={icons.point} style={styles.icon} />
+              <Text style={styles.addressText}>{destinationAddress}</Text>
+            </View>
+          </View>
+          <Payment
+            fullName={user?.fullName!}
+            email={user?.emailAddresses[0].emailAddress!}
+            amount={driverDetails?.price!}
+            driverId={driverDetails?.id ?? 0}
+            rideTime={driverDetails?.time!}
+          />
+        </>
+      </RideLayout>
+    </StripeProvider>
+  );
+};
+
+const styles = StyleSheet.create({
+  title: {
+    fontSize: 20,
+    fontWeight: "600",
+    marginBottom: 12,
+  },
+  centeredContainer: {
+    alignItems: "center",
+    marginTop: 16,
+  },
+  profileImage: {
+    width: 112,
+    height: 112,
+    borderRadius: 56,
+  },
+  driverInfo: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 12,
+  },
+  driverName: {
+    fontSize: 18,
+    fontWeight: "600",
+    marginRight: 8,
+  },
+  ratingContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  starIcon: {
+    width: 20,
+    height: 20,
+  },
+  ratingText: {
+    fontSize: 18,
+    fontWeight: "400",
+    marginLeft: 4,
+  },
+  infoBox: {
+    backgroundColor: "#ECF4FE",
+    padding: 16,
+    borderRadius: 16,
+    marginTop: 16,
+  },
+  infoRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: "black",
+  },
+  infoText: {
+    fontSize: 18,
+    fontWeight: "400",
+    color: "black",
+  },
+  priceText: {
+    color: "#0CC25F",
+  },
+  addressContainer: {
+    marginTop: 16,
+    paddingVertical: 12,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: "#444",
+  },
+  addressRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 8,
+  },
+  icon: {
+    width: 24,
+    height: 24,
+    marginRight: 8,
+  },
+  addressText: {
+    fontSize: 18,
+    fontWeight: "400",
+  },
+});
+
+export default BookRide;

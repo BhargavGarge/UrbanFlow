@@ -59,6 +59,7 @@ const GoogleTextInput = ({
         }}
         query={{
           key: "",
+          // AIzaSyCuBuAyLHdqCJmxic6imaPfGIPpG3fs7I4
           language: "en",
         }}
         renderLeftButton={() => (

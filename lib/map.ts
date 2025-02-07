@@ -1,6 +1,6 @@
 import { Driver, MarkerData } from "../types/type";
 
-const directionsAPI = "AIzaSyCuBuAyLHdqCJmxic6imaPfGIPpG3fs7I4";
+const directionsAPI = "";
 
 export const generateMarkersFromData = ({
   data,

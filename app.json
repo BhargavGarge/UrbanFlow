@@ -32,6 +32,13 @@
         {
           "origin": "https://uber.dev/"
         }
+      ],
+      [
+        "@stripe/stripe-react-native",
+        {
+          "merchantIdentifier": "myapp",
+          "enableGooglePay": true
+        }
       ]
     ],
     "experiments": {

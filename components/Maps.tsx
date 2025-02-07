@@ -83,7 +83,7 @@ export default function Maps() {
       key={markers.length} // Force re-render of the map when markers update
       className="w-full h-full rounded-2xl"
       tintColor="black"
-      mapType="mutedStandard"
+      // mapType="mutedStandard"
       showsPointsOfInterest={false}
       initialRegion={region}
       showsUserLocation={true}

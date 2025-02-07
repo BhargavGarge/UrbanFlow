@@ -3,6 +3,8 @@ import { neon } from "@neondatabase/serverless";
 export async function POST(request: Request) {
   try {
     const body = await request.json();
+    console.log("Received request body:", body); // ✅ Log request body
+
     const {
       origin_address,
       destination_address,
@@ -30,11 +32,14 @@ export async function POST(request: Request) {
       !driver_id ||
       !user_id
     ) {
-      return Response.json(
-        { error: "Missing required fields" },
+      console.error("❌ Missing fields:", body); // ✅ Log missing fields
+      return new Response(
+        JSON.stringify({ error: "Missing required fields" }),
         { status: 400 }
       );
     }
+
+    console.log("✅ All fields present. Sending query to DB...");
 
     const sql = neon(
       "postgresql://flowdb_owner:1mxfwQhPl0MG@ep-still-glade-a2a1sxjx.eu-central-1.aws.neon.tech/flowdb?sslmode=require"
@@ -69,9 +74,12 @@ export async function POST(request: Request) {
       RETURNING *;
     `;
 
-    return Response.json({ data: response[0] }, { status: 201 });
+    console.log("✅ Ride saved successfully:", response[0]); // ✅ Log inserted data
+    return new Response(JSON.stringify({ data: response[0] }), { status: 201 });
   } catch (error) {
-    console.error("Error inserting data into recent_rides:", error);
-    return Response.json({ error: "Internal Server Error" }, { status: 500 });
+    console.error("❌ Error inserting data into rides:", error);
+    return new Response(JSON.stringify({ error: "Internal Server Error" }), {
+      status: 500,
+    });
   }
 }
